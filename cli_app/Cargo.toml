@@ -1,0 +1,19 @@
+[package]
+name = "cli_app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = "4"
+anyhow = "1"
+config = "0.14"
+dotenv = "0.15"
+serde = { version = "1", features = ["derive"] }
+axum = "*"
+tokio = { version = "*", features = ["full"] }
+arc-swap = "1.7.1"
+tracing = { version = "0.1", features = ["log"] }
+tracing-log = { version = "0.1" }
+tracing-subscriber = { version = "0.2", features = ["registry", "env-filter"] }
+tower-http = { version = "*", features = ["trace"] }
+chrono = { version = "0.4.34", features = ["serde"] }
