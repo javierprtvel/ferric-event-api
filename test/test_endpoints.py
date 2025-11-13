@@ -6,10 +6,10 @@ def test_root():
     assert resp.json() == "Hello, world!"
 
 def test_search_returns_events_within_time_range():
-    params = {"start_time": "2025-11-12T08:00:00Z", "end_time": "2025-11-12T18:00:00Z"}
+    params = {"start_time": "2025-11-01T08:00:00Z", "end_time": "2025-11-30T18:00:00Z"}
 
     resp = requests.get("http://localhost:8080/search", params=params)
-    
+
     assert resp.status_code == 200
     expected_json = {
         "data": {
@@ -18,9 +18,9 @@ def test_search_returns_events_within_time_range():
                     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                     "title": "Quevedo",
                     "start_date": "2025-11-12",
-                    "start_time": "22:38:19",
+                    "start_time": "22:00:00",
                     "end_date": "2025-11-12",
-                    "end_time": "14:45:15",
+                    "end_time": "23:00:00",
                     "min_price": 15.99,
                     "max_price": 39.99,
                 }

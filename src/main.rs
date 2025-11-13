@@ -1,116 +1,61 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+mod api;
+mod repository;
+mod service;
+mod state;
 
-use axum::extract::{Query, rejection::QueryRejection};
-use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
-use chrono::{DateTime, Utc};
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Serialize};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
+
+use chrono::DateTime;
 use tokio::net::TcpListener;
+use uuid::Uuid;
+
+use crate::repository::{Event, EventRepository, SaveEventRequest};
+use crate::service::SearchEventService;
+use crate::state::ApplicationState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let router = Router::new()
-        .route("/", get(async || Json("Hello, world!")))
-        .route("/search", get(handle_search));
+    let state = init_application_state();
+
+    let app = api::configure(state);
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8080);
     let listener = TcpListener::bind(addr).await?;
 
-    axum::serve(listener, router).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
 
-async fn handle_search(
-    params: Result<Query<SearchParams>, QueryRejection>,
-) -> Result<Json<ApiResponse<SearchResponse>>, (StatusCode, Json<ApiResponse<()>>)> {
-    match params {
-        Err(_err) => {
-            println!("Search query params are invalid");
-            let error_response = ErrorResponse {
-                code: "11".to_string(),
-                message: "Missing required params".to_string(),
-            };
-            Err((
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<()>::Ko(error_response)),
-            ))
-        }
-        Ok(query) => {
-            println!("Search query params are: {query:?}");
-            let dummy_response = SearchResponse {
-                events: vec![SearchEventResponse {
-                    id: "3fa85f64-5717-4562-b3fc-2c963f66afa6".to_string(),
-                    title: "Quevedo".to_string(),
-                    start_date: "2025-11-12".to_string(),
-                    start_time: "22:38:19".to_string(),
-                    end_date: "2025-11-12".to_string(),
-                    end_time: "14:45:15".to_string(),
-                    min_price: 15.99f64,
-                    max_price: 39.99f64,
-                }],
-            };
+fn init_application_state() -> ApplicationState {
+    let mut event_repository = EventRepository::new();
+    event_repository.upsert(Event {
+        id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap(),
+        title: "Quevedo".to_string(),
+        start_time: DateTime::from_str("2025-11-12 22:00:00.000Z").unwrap(),
+        end_time: DateTime::from_str("2025-11-12 23:00:00.000Z").unwrap(),
+        min_price: 15.99f64,
+        max_price: 39.99f64,
+    });
+    event_repository.save(SaveEventRequest {
+        title: "Nirvana".to_string(),
+        start_time: DateTime::from_str("2025-10-31 16:30:00.000Z").unwrap(),
+        end_time: DateTime::from_str("2025-10-31 23:59:59.000Z").unwrap(),
+        min_price: 75.00f64,
+        max_price: 99.99f64,
+    });
+    event_repository.save(SaveEventRequest {
+        title: "Tool".to_string(),
+        start_time: DateTime::from_str("2025-12-24 21:00:00.000Z").unwrap(),
+        end_time: DateTime::from_str("2025-12-24 23:45:00.000Z").unwrap(),
+        min_price: 199.99f64,
+        max_price: 199.99f64,
+    });
 
-            Ok(Json(ApiResponse::Ok(dummy_response)))
-        }
-    }
-}
+    let state = ApplicationState {
+        search_event_service: SearchEventService::new(event_repository),
+    };
 
-#[derive(Deserialize, Debug)]
-#[allow(dead_code)]
-struct SearchParams {
-    start_time: DateTime<Utc>,
-    end_time: DateTime<Utc>,
-}
-
-enum ApiResponse<T: Serialize> {
-    Ok(T),
-    Ko(ErrorResponse),
-}
-
-impl<T: serde::ser::Serialize> Serialize for ApiResponse<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        let mut state = serializer.serialize_struct("ApiResponse", 2)?;
-
-        match self {
-            ApiResponse::Ok(data) => {
-                state.serialize_field("data", data)?;
-                state.serialize_field("error", &Option::<ErrorResponse>::None)?;
-            }
-            ApiResponse::Ko(error) => {
-                state.serialize_field("data", &Option::<T>::None)?;
-                state.serialize_field("error", error)?;
-            }
-        }
-
-        state.end()
-    }
-}
-
-#[derive(Serialize)]
-struct ErrorResponse {
-    code: String,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct SearchResponse {
-    events: Vec<SearchEventResponse>,
-}
-
-#[derive(Serialize)]
-struct SearchEventResponse {
-    id: String,
-    title: String,
-    start_date: String,
-    start_time: String,
-    end_date: String,
-    end_time: String,
-    min_price: f64,
-    max_price: f64,
+    state
 }
