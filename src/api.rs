@@ -1,7 +1,7 @@
 use axum::extract::State;
 use axum::extract::{Query, rejection::QueryRejection};
 use axum::http::StatusCode;
-use axum::routing::get;
+use axum::routing::{get, patch};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::ser::SerializeStruct;
@@ -13,6 +13,7 @@ pub fn configure(state: ApplicationState) -> Router {
     Router::new()
         .route("/", get(handle_root))
         .route("/search", get(handle_search))
+        .route("/ingest", patch(handle_ingest))
         .with_state(state)
 }
 
@@ -22,7 +23,10 @@ async fn handle_root() -> Json<String> {
 
 async fn handle_search(
     params: Result<Query<SearchParams>, QueryRejection>,
-    State(state): State<ApplicationState>,
+    State(ApplicationState {
+        search_event_service,
+        ..
+    }): State<ApplicationState>,
 ) -> Result<Json<ApiResponse<SearchResponse>>, (StatusCode, Json<ApiResponse<()>>)> {
     match params {
         Err(_err) => {
@@ -33,14 +37,15 @@ async fn handle_search(
             };
             Err((
                 StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<()>::Ko(error_response)),
+                Json(ApiResponse::Ko(error_response)),
             ))
         }
         Ok(query) => {
             println!("Search query params are: {query:?}");
 
-            let service = state.search_event_service;
-            let events = service.search_events(query.start_time, query.end_time);
+            let events = search_event_service
+                .search_events(query.start_time, query.end_time)
+                .await;
 
             let dummy_response = SearchResponse {
                 events: events
@@ -60,6 +65,24 @@ async fn handle_search(
 
             Ok(Json(ApiResponse::Ok(dummy_response)))
         }
+    }
+}
+
+async fn handle_ingest(
+    State(ApplicationState {
+        mut ingest_event_service,
+        ..
+    }): State<ApplicationState>,
+) -> Result<StatusCode, (StatusCode, Json<ApiResponse<()>>)> {
+    match ingest_event_service.ingest_events().await {
+        Ok(()) => Ok(StatusCode::ACCEPTED),
+        Err(_e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::Ko(ErrorResponse {
+                code: "77".to_string(),
+                message: "Unexpected error when starting event ingestion.".to_string(),
+            })),
+        )),
     }
 }
 

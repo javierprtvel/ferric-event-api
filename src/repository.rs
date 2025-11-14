@@ -22,17 +22,26 @@ impl EventRepository {
         Self(HashMap::new())
     }
 
-    pub fn find_all(&self) -> Vec<Event> {
+    pub async fn find_all(&self) -> Vec<Event> {
         let Self(event_store) = self;
         event_store.values().cloned().collect()
     }
 
-    pub fn find_by_id(&self, id: Uuid) -> Option<&Event> {
+    pub async fn find_by_id(&self, id: &Uuid) -> Option<&Event> {
         let Self(event_store) = self;
-        event_store.get(&id)
+        event_store.get(id)
     }
 
-    pub fn find_between(&self, start_time: DateTime<Utc>, end_time: DateTime<Utc>) -> Vec<&Event> {
+    pub async fn find_by_title(&self, title: &str) -> Option<Event> {
+        let Self(event_store) = self;
+        event_store.values().find(|e| e.title == title).cloned()
+    }
+
+    pub async fn find_between(
+        &self,
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+    ) -> Vec<&Event> {
         let Self(event_store) = self;
         event_store
             .values()
@@ -40,7 +49,7 @@ impl EventRepository {
             .collect()
     }
 
-    pub fn save(&mut self, e: SaveEventRequest) -> Event {
+    pub async fn save(&mut self, e: SaveEventRequest) -> Event {
         let Self(event_store) = self;
 
         let event = Event {
@@ -56,7 +65,7 @@ impl EventRepository {
         event
     }
 
-    pub fn upsert(&mut self, entity: Event) -> Event {
+    pub async fn upsert(&mut self, entity: Event) -> Event {
         let Self(event_store) = self;
         event_store.insert(entity.id, entity.clone());
         entity

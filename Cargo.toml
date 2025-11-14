@@ -8,7 +8,9 @@ axum = "*"
 tokio = { version = "*", features = ["full"] }
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
+serde-xml-rs = "*"
 anyhow = "1.0.100"
 rand = "0.9.2"
 chrono = { version = "*", features = ["serde"] }
 uuid = { version = "*", features = ["serde", "v4"] }
+reqwest = { version = "*", features = ["json"] }

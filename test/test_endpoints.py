@@ -1,9 +1,11 @@
 import requests
 
+
 def test_root():
     resp = requests.get("http://localhost:8080/")
     assert resp.status_code == 200
     assert resp.json() == "Hello, world!"
+
 
 def test_search_returns_events_within_time_range():
     params = {"start_time": "2025-11-01T08:00:00Z", "end_time": "2025-11-30T18:00:00Z"}
@@ -32,6 +34,7 @@ def test_search_returns_events_within_time_range():
     print(f"Response is {resp.json()}")
     assert resp.json() == expected_json
 
+
 def test_search_returns_client_error_when_required_param_is_missing():
     params = {"start_time": "2025-11-12T08:00:00Z"}
 
@@ -45,6 +48,7 @@ def test_search_returns_client_error_when_required_param_is_missing():
 
     print(f"Response is {resp.json()}")
     assert resp.json() == expected_json
+
 
 def test_search_returns_server_error_when_something_unexpected_happens():
     params = {"start_time": "2025-11-12T08:00:00Z", "end_time": "2025-11-12T18:00:00Z"}
@@ -60,9 +64,22 @@ def test_search_returns_server_error_when_something_unexpected_happens():
     print(f"Response is {resp.json()}")
     assert resp.json() == expected_json
 
+
+def test_ingest_starts_event_data_ingestion():
+    resp = requests.patch("http://localhost:8080/ingest")
+
+    print(f"Response status is {resp.status_code}")
+    assert resp.status_code == 202
+    assert resp.text == ""
+
+
 if __name__ == "__main__":
     test_root()
+
     test_search_returns_events_within_time_range()
     test_search_returns_client_error_when_required_param_is_missing()
     # test_search_returns_server_error_when_something_unexpected_happens()
+
+    test_ingest_starts_event_data_ingestion()
+
     print("All tests passed.")
