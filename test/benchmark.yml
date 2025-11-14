@@ -1,0 +1,11 @@
+---
+
+concurrency: 3
+base: 'http://localhost:8080'
+iterations: 1000
+# rampup: 2
+
+plan:
+  - name: Search events within a time range
+    request:
+      url: /search?start_time=2025-11-01T08:00:00Z&end_time=2025-11-30T18:00:00Z
