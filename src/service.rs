@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
@@ -6,13 +8,12 @@ use crate::{
     repository::{Event, EventRepository, SaveEventRequest},
 };
 
-#[derive(Clone)]
 pub struct SearchEventService {
-    event_repository: EventRepository,
+    event_repository: Arc<EventRepository>,
 }
 
 impl SearchEventService {
-    pub fn new(event_repository: EventRepository) -> Self {
+    pub fn new(event_repository: Arc<EventRepository>) -> Self {
         Self { event_repository }
     }
 
@@ -20,23 +21,22 @@ impl SearchEventService {
         &self,
         start_time: DateTime<Utc>,
         end_time: DateTime<Utc>,
-    ) -> Vec<&Event> {
+    ) -> Vec<Event> {
         self.event_repository
             .find_between(start_time, end_time)
             .await
     }
 }
 
-#[derive(Clone)]
 pub struct IngestEventService {
-    event_provider_client: EventProviderClient,
-    event_repository: EventRepository,
+    event_provider_client: Arc<EventProviderClient>,
+    event_repository: Arc<EventRepository>,
 }
 
 impl IngestEventService {
     pub fn new(
-        event_provider_client: EventProviderClient,
-        event_repository: EventRepository,
+        event_provider_client: Arc<EventProviderClient>,
+        event_repository: Arc<EventRepository>,
     ) -> Self {
         Self {
             event_provider_client,
@@ -44,26 +44,46 @@ impl IngestEventService {
         }
     }
 
-    pub async fn ingest_events(&mut self) -> Result<()> {
-        // 1. Fetch event data from third-party provider
-        let provider_events = self.event_provider_client.fetch_events().await?;
-
-        // 2. Insert or update events in repository depending on ingestion criteria
-        for pe in provider_events {
-            if let Some(mut e) = self.event_repository.find_by_title(&pe.title).await {
-                // Upsert
-                e.start_time = pe.start_time;
-                e.end_time = pe.end_time;
-                e.min_price = pe.min_price;
-                e.max_price = pe.max_price;
-                self.event_repository.upsert(e).await;
-            } else {
-                // Save
-                self.event_repository.save(pe.into()).await;
-            }
-        }
-
+    pub async fn ingest_events(&self) -> Result<()> {
+        self.start_event_ingestion();
         Ok(())
+    }
+
+    fn start_event_ingestion(&self) {
+        let event_provider_client = self.event_provider_client.clone();
+        let event_repository = self.event_repository.clone();
+
+        tokio::spawn(async move {
+            // 1. Fetch event data from third-party event provider
+            println!("Fetching event data from provider...");
+            let provider_events = match event_provider_client.fetch_events().await {
+                Ok(pes) => pes,
+                Err(error) => {
+                    println!(
+                        "Error fetching event data from provider: {}.\nEvent data ingestion failed.",
+                        error
+                    );
+                    return;
+                }
+            };
+
+            // 2. Insert or update events in repository depending on ingestion criteria
+            println!("Updating event store with provider data...");
+            for pe in provider_events {
+                if let Some(mut e) = event_repository.find_by_title(&pe.title).await {
+                    // Upsert
+                    e.start_time = pe.start_time;
+                    e.end_time = pe.end_time;
+                    e.min_price = pe.min_price;
+                    e.max_price = pe.max_price;
+                    event_repository.upsert(e).await;
+                } else {
+                    // Save
+                    event_repository.save(pe.into()).await;
+                }
+            }
+            println!("Event store update finished.");
+        });
     }
 }
 

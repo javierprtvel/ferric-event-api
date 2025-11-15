@@ -81,5 +81,9 @@ if __name__ == "__main__":
     # test_search_returns_server_error_when_something_unexpected_happens()
 
     test_ingest_starts_event_data_ingestion()
+    test_search_returns_events_within_time_range()
+    test_search_returns_events_within_time_range()
+    test_search_returns_client_error_when_required_param_is_missing()
+    test_search_returns_events_within_time_range()
 
     print("All tests passed.")

@@ -6,6 +6,7 @@ mod state;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use chrono::DateTime;
 use tokio::net::TcpListener;
@@ -20,7 +21,7 @@ use crate::state::ApplicationState;
 async fn main() -> anyhow::Result<()> {
     let state = init_application_state().await;
 
-    let app = api::configure(state);
+    let app = api::configure(Arc::new(state));
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8080);
     let listener = TcpListener::bind(addr).await?;
@@ -31,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn init_application_state() -> ApplicationState {
-    let mut event_repository = EventRepository::new();
+    let event_repository = EventRepository::new();
     event_repository
         .upsert(Event {
             id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap(),
@@ -61,9 +62,13 @@ async fn init_application_state() -> ApplicationState {
         })
         .await;
 
+    let event_provider_client = Arc::new(EventProviderClient);
+    let event_repository = Arc::new(event_repository);
+
+    // Dependency Injection
     let state = ApplicationState {
         search_event_service: SearchEventService::new(event_repository.clone()),
-        ingest_event_service: IngestEventService::new(EventProviderClient, event_repository),
+        ingest_event_service: IngestEventService::new(event_provider_client, event_repository),
     };
 
     state

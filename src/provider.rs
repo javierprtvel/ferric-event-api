@@ -7,25 +7,19 @@ use chrono::NaiveDateTime;
 use chrono::Utc;
 use serde::Deserialize;
 
-#[derive(Clone)]
-pub struct EventProviderClient;
-
-const EVENT_PROVIDER_URL: &'static str = "https://localhost:8090";
+const EVENT_PROVIDER_URL: &'static str = "http://localhost:8090";
 const API_PATH: &'static str = "/api/events";
+
+pub struct EventProviderClient;
 
 impl EventProviderClient {
     pub async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
-        let response_body_text = reqwest::get(format!("{EVENT_PROVIDER_URL}/{API_PATH}"))
-            .await?
-            .text()
-            .await?;
-        println!("Provider API response: {response_body_text}");
+        let url = format!("{EVENT_PROVIDER_URL}/{API_PATH}");
+        let response_body_text = reqwest::get(url).await?.text().await?;
 
         let plan_list: EventPlanList = serde_xml_rs::from_str(&response_body_text)?;
-        println!("Provider Plan list: {plan_list:?}");
 
         let events: Vec<ProviderEvent> = plan_list.into();
-        println!("Provider events: {events:?}");
 
         Ok(events)
     }
@@ -91,6 +85,7 @@ struct Output {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename = "base_plan")]
+#[allow(dead_code)]
 struct BasePlan {
     #[serde(rename = "@base_plan_id")]
     base_plan_id: String,
@@ -103,6 +98,7 @@ struct BasePlan {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Plan {
     #[serde(rename = "@plan_id")]
     plan_id: String,
@@ -115,6 +111,7 @@ struct Plan {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Zone {
     #[serde(rename = "@zone_id")]
     zone_id: String,

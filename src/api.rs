@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::extract::State;
 use axum::extract::{Query, rejection::QueryRejection};
 use axum::http::StatusCode;
@@ -9,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::state::ApplicationState;
 
-pub fn configure(state: ApplicationState) -> Router {
+pub fn configure(state: Arc<ApplicationState>) -> Router {
     Router::new()
         .route("/", get(handle_root))
         .route("/search", get(handle_search))
@@ -23,11 +25,13 @@ async fn handle_root() -> Json<String> {
 
 async fn handle_search(
     params: Result<Query<SearchParams>, QueryRejection>,
-    State(ApplicationState {
-        search_event_service,
-        ..
-    }): State<ApplicationState>,
+    State(state): State<Arc<ApplicationState>>,
 ) -> Result<Json<ApiResponse<SearchResponse>>, (StatusCode, Json<ApiResponse<()>>)> {
+    let ApplicationState {
+        ref search_event_service,
+        ..
+    } = *state;
+
     match params {
         Err(_err) => {
             println!("Search query params are invalid");
@@ -47,7 +51,7 @@ async fn handle_search(
                 .search_events(query.start_time, query.end_time)
                 .await;
 
-            let dummy_response = SearchResponse {
+            let response = SearchResponse {
                 events: events
                     .iter()
                     .map(|e| SearchEventResponse {
@@ -63,17 +67,19 @@ async fn handle_search(
                     .collect(),
             };
 
-            Ok(Json(ApiResponse::Ok(dummy_response)))
+            Ok(Json(ApiResponse::Ok(response)))
         }
     }
 }
 
 async fn handle_ingest(
-    State(ApplicationState {
-        mut ingest_event_service,
-        ..
-    }): State<ApplicationState>,
+    State(state): State<Arc<ApplicationState>>,
 ) -> Result<StatusCode, (StatusCode, Json<ApiResponse<()>>)> {
+    let ApplicationState {
+        ref ingest_event_service,
+        ..
+    } = *state;
+
     match ingest_event_service.ingest_events().await {
         Ok(()) => Ok(StatusCode::ACCEPTED),
         Err(_e) => Err((
