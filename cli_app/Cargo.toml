@@ -17,3 +17,4 @@ tracing-log = { version = "0.1" }
 tracing-subscriber = { version = "0.2", features = ["registry", "env-filter"] }
 tower-http = { version = "*", features = ["trace"] }
 chrono = { version = "0.4.34", features = ["serde"] }
+sqlx = {version = "0.7", features = ["mysql", "runtime-tokio", "tls-rustls", "chrono", "macros"]}

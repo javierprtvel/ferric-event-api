@@ -13,5 +13,9 @@ pub fn configure(state: Arc<ApplicationState>) -> Router {
         .route("/posts/{id}", get(handlers::posts::get))
         .route("/posts/{id}", put(handlers::posts::update))
         .route("/posts/{id}", delete(handlers::posts::delete))
+        .route("/users", post(handlers::users::create))
+        .route("/users/{id}", get(handlers::users::get))
+        .route("/users/{id}", put(handlers::users::update))
+        .route("/users/{id}", delete(handlers::users::delete))
         .with_state(state)
 }
