@@ -3,17 +3,16 @@ use std::sync::Arc;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
-use crate::{
-    provider::{EventProviderClient, ProviderEvent},
-    repository::{Event, EventRepository, SaveEventRequest},
-};
+use super::ports::provider::{EventProviderClient, ProviderEvent};
+use super::ports::repository::{EventRepository, SaveEventRequest};
+use crate::domain::event::Event;
 
-pub struct SearchEventService {
-    event_repository: Arc<EventRepository>,
+pub struct SearchEventService<T: EventRepository> {
+    event_repository: Arc<T>,
 }
 
-impl SearchEventService {
-    pub fn new(event_repository: Arc<EventRepository>) -> Self {
+impl<T: EventRepository> SearchEventService<T> {
+    pub fn new(event_repository: Arc<T>) -> Self {
         Self { event_repository }
     }
 
@@ -28,16 +27,15 @@ impl SearchEventService {
     }
 }
 
-pub struct IngestEventService {
-    event_provider_client: Arc<EventProviderClient>,
-    event_repository: Arc<EventRepository>,
+pub struct IngestEventService<T: EventProviderClient, S: EventRepository> {
+    event_provider_client: Arc<T>,
+    event_repository: Arc<S>,
 }
 
-impl IngestEventService {
-    pub fn new(
-        event_provider_client: Arc<EventProviderClient>,
-        event_repository: Arc<EventRepository>,
-    ) -> Self {
+impl<T: EventProviderClient + Sync + Send + 'static, S: EventRepository + Sync + Send + 'static>
+    IngestEventService<T, S>
+{
+    pub fn new(event_provider_client: Arc<T>, event_repository: Arc<S>) -> Self {
         Self {
             event_provider_client,
             event_repository,

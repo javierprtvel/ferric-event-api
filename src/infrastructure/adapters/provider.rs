@@ -1,19 +1,18 @@
-use std::f64;
 use std::str::FromStr;
 
 use anyhow::Result;
-use chrono::DateTime;
 use chrono::NaiveDateTime;
-use chrono::Utc;
 use serde::Deserialize;
+
+use crate::application::ports::provider::{EventProviderClient, ProviderEvent};
 
 const EVENT_PROVIDER_URL: &'static str = "http://localhost:8090";
 const API_PATH: &'static str = "/api/events";
 
-pub struct EventProviderClient;
+pub struct HttpEventProviderClient;
 
-impl EventProviderClient {
-    pub async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
+impl EventProviderClient for HttpEventProviderClient {
+    async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
         let url = format!("{EVENT_PROVIDER_URL}/{API_PATH}");
         let response_body_text = reqwest::get(url).await?.text().await?;
 
@@ -25,56 +24,10 @@ impl EventProviderClient {
     }
 }
 
-#[derive(Debug)]
-pub struct ProviderEvent {
-    pub title: String,
-    pub start_time: DateTime<Utc>,
-    pub end_time: DateTime<Utc>,
-    pub min_price: f64,
-    pub max_price: f64,
-}
-
-impl ProviderEvent {
-    fn from(p: &Plan, title: &str) -> Result<Self> {
-        let min_price = p
-            .zones
-            .iter()
-            .map(|z| z.price.parse::<f64>().unwrap())
-            .fold(f64::INFINITY, |a, b| a.min(b));
-        let max_price = p
-            .zones
-            .iter()
-            .map(|z| z.price.parse::<f64>().unwrap())
-            .fold(f64::NEG_INFINITY, |a, b| a.max(b));
-
-        Ok(ProviderEvent {
-            title: String::from(title),
-            start_time: NaiveDateTime::from_str(&p.plan_start_date)?.and_utc(),
-            end_time: NaiveDateTime::from_str(&p.plan_end_date)?.and_utc(),
-            min_price,
-            max_price,
-        })
-    }
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(rename = "planList")]
 struct EventPlanList {
     output: Output,
-}
-
-impl Into<Vec<ProviderEvent>> for EventPlanList {
-    fn into(self) -> Vec<ProviderEvent> {
-        self.output
-            .base_plans
-            .iter()
-            .flat_map(|bp| {
-                bp.plans
-                    .iter()
-                    .filter_map(|p| ProviderEvent::from(p, &bp.title).ok())
-            })
-            .collect()
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -119,6 +72,43 @@ struct Zone {
     price: String,
 }
 
+impl Into<Vec<ProviderEvent>> for EventPlanList {
+    fn into(self) -> Vec<ProviderEvent> {
+        self.output
+            .base_plans
+            .iter()
+            .flat_map(|bp| {
+                bp.plans
+                    .iter()
+                    .filter_map(|p| ProviderEvent::from(p, &bp.title).ok())
+            })
+            .collect()
+    }
+}
+
+impl ProviderEvent {
+    fn from(p: &Plan, title: &str) -> Result<Self> {
+        let min_price = p
+            .zones
+            .iter()
+            .map(|z| z.price.parse::<f64>().unwrap())
+            .fold(f64::INFINITY, |a, b| a.min(b));
+        let max_price = p
+            .zones
+            .iter()
+            .map(|z| z.price.parse::<f64>().unwrap())
+            .fold(f64::NEG_INFINITY, |a, b| a.max(b));
+
+        Ok(ProviderEvent {
+            title: String::from(title),
+            start_time: NaiveDateTime::from_str(&p.plan_start_date)?.and_utc(),
+            end_time: NaiveDateTime::from_str(&p.plan_end_date)?.and_utc(),
+            min_price,
+            max_price,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,5 +122,13 @@ mod tests {
         let events: Vec<ProviderEvent> = plan_list.into();
 
         assert_eq!(events.len(), 4);
+    }
+}
+
+pub struct DummyEventProviderClient;
+
+impl EventProviderClient for DummyEventProviderClient {
+    async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
+        Ok(Vec::new())
     }
 }

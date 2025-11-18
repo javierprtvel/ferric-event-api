@@ -1,31 +1,52 @@
 use std::sync::Arc;
 
+use axum::Json;
 use axum::extract::State;
 use axum::extract::{Query, rejection::QueryRejection};
 use axum::http::StatusCode;
-use axum::routing::{get, patch};
-use axum::{Json, Router};
 use chrono::{DateTime, Utc};
-use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
-use crate::state::ApplicationState;
+use crate::application::ports::provider::EventProviderClient;
+use crate::application::ports::repository::EventRepository;
 
-pub fn configure(state: Arc<ApplicationState>) -> Router {
-    Router::new()
-        .route("/", get(handle_root))
-        .route("/search", get(handle_search))
-        .route("/ingest", patch(handle_ingest))
-        .with_state(state)
+use super::state::ApplicationState;
+use super::api::{ApiResponse, ErrorResponse};
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct SearchParams {
+    start_time: DateTime<Utc>,
+    end_time: DateTime<Utc>,
 }
 
-async fn handle_root() -> Json<String> {
+#[derive(Serialize)]
+pub struct SearchResponse {
+    events: Vec<SearchEventResponse>,
+}
+
+#[derive(Serialize)]
+pub struct SearchEventResponse {
+    id: String,
+    title: String,
+    start_date: String,
+    start_time: String,
+    end_date: String,
+    end_time: String,
+    min_price: f64,
+    max_price: f64,
+}
+
+pub async fn handle_root() -> Json<String> {
     Json("Hello, world!".to_string())
 }
 
-async fn handle_search(
+pub async fn handle_search<
+    T: EventRepository + Send + Sync + 'static,
+    S: EventProviderClient + Send + Sync + 'static,
+>(
     params: Result<Query<SearchParams>, QueryRejection>,
-    State(state): State<Arc<ApplicationState>>,
+    State(state): State<Arc<ApplicationState<T, S>>>,
 ) -> Result<Json<ApiResponse<SearchResponse>>, (StatusCode, Json<ApiResponse<()>>)> {
     let ApplicationState {
         ref search_event_service,
@@ -72,8 +93,11 @@ async fn handle_search(
     }
 }
 
-async fn handle_ingest(
-    State(state): State<Arc<ApplicationState>>,
+pub async fn handle_ingest<
+    T: EventRepository + Send + Sync + 'static,
+    S: EventProviderClient + Send + Sync + 'static,
+>(
+    State(state): State<Arc<ApplicationState<T, S>>>,
 ) -> Result<StatusCode, (StatusCode, Json<ApiResponse<()>>)> {
     let ApplicationState {
         ref ingest_event_service,
@@ -90,61 +114,4 @@ async fn handle_ingest(
             })),
         )),
     }
-}
-
-#[derive(Deserialize, Debug)]
-#[allow(dead_code)]
-struct SearchParams {
-    start_time: DateTime<Utc>,
-    end_time: DateTime<Utc>,
-}
-
-enum ApiResponse<T: Serialize> {
-    Ok(T),
-    Ko(ErrorResponse),
-}
-
-impl<T: serde::ser::Serialize> Serialize for ApiResponse<T> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        let mut state = serializer.serialize_struct("ApiResponse", 2)?;
-
-        match self {
-            ApiResponse::Ok(data) => {
-                state.serialize_field("data", data)?;
-                state.serialize_field("error", &Option::<ErrorResponse>::None)?;
-            }
-            ApiResponse::Ko(error) => {
-                state.serialize_field("data", &Option::<T>::None)?;
-                state.serialize_field("error", error)?;
-            }
-        }
-
-        state.end()
-    }
-}
-
-#[derive(Serialize)]
-struct ErrorResponse {
-    code: String,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct SearchResponse {
-    events: Vec<SearchEventResponse>,
-}
-
-#[derive(Serialize)]
-struct SearchEventResponse {
-    id: String,
-    title: String,
-    start_date: String,
-    start_time: String,
-    end_date: String,
-    end_time: String,
-    min_price: f64,
-    max_price: f64,
 }
