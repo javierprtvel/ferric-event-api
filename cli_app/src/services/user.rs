@@ -204,7 +204,7 @@ impl UserService for MySQLUserService {
             .map_err(|e| anyhow::anyhow!(e).context(format!("Failed to get user by id: {}", id)))
     }
 
-    async fn get_user_by_name(&self, name: &str) -> anyhow::Result<User> {
+    async fn get_user_by_name(&self, _name: &str) -> anyhow::Result<User> {
         todo!("Not yet implemented")
     }
 

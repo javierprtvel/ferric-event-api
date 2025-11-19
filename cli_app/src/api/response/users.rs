@@ -6,8 +6,3 @@ use crate::model::User;
 pub struct SingleUserResponse {
     pub data: User,
 }
-
-#[derive(Serialize)]
-pub struct ListUsersResponse {
-    pub data: Vec<User>,
-}
