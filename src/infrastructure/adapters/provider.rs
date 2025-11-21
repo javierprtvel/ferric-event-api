@@ -125,6 +125,7 @@ mod tests {
     }
 }
 
+#[allow(dead_code)]
 pub struct DummyEventProviderClient;
 
 impl EventProviderClient for DummyEventProviderClient {
