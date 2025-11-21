@@ -6,14 +6,23 @@ use serde::Deserialize;
 
 use crate::application::ports::provider::{EventProviderClient, ProviderEvent};
 
-const EVENT_PROVIDER_URL: &'static str = "http://localhost:8090";
-const API_PATH: &'static str = "/api/events";
+pub struct HttpEventProviderClient {
+    provider_url: String,
+    event_api_path: String,
+}
 
-pub struct HttpEventProviderClient;
+impl HttpEventProviderClient {
+    pub fn new(provider_url: String, event_api_path: String) -> Self {
+        Self {
+            provider_url,
+            event_api_path,
+        }
+    }
+}
 
 impl EventProviderClient for HttpEventProviderClient {
     async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
-        let url = format!("{EVENT_PROVIDER_URL}/{API_PATH}");
+        let url = format!("{}/{}", self.provider_url, self.event_api_path);
         let response_body_text = reqwest::get(url).await?.text().await?;
 
         let plan_list: EventPlanList = serde_xml_rs::from_str(&response_body_text)?;

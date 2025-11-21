@@ -1,4 +1,5 @@
 mod adapters;
+mod config;
 
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -10,24 +11,52 @@ use tokio::{net::TcpListener, signal};
 use tracing::{Level, level_filters::LevelFilter};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::application::service::{IngestEventService, SearchEventService};
+use crate::{
+    application::service::{IngestEventService, SearchEventService},
+    infrastructure::config::ApplicationConfig,
+};
 
-const DATABASE_CONN_POOL_MAX_CONN: u32 = 30;
-const DATABASE_URL: &'static str = "postgres://user:password@localhost:5432/eventdb";
+pub fn load_config(env_prefix: &str) -> anyhow::Result<config::ApplicationConfig> {
+    let app_config = config::ApplicationConfig::new(env_prefix)?;
+    Ok(app_config)
+}
 
-pub fn serve_app() -> anyhow::Result<()> {
+pub fn serve_app(config: ApplicationConfig) -> anyhow::Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_io()
         .enable_time()
         .build()?
         .block_on(async {
             let pool = PgPoolOptions::new()
-                .max_connections(DATABASE_CONN_POOL_MAX_CONN)
-                .connect(DATABASE_URL)
+                .max_connections(
+                    config
+                        .database
+                        .max_connections
+                        .clone()
+                        .expect("Database maximum connections config value is missing"),
+                )
+                .connect(
+                    &config
+                        .database
+                        .url
+                        .clone()
+                        .expect("Database URL config value is missing"),
+                )
                 .await?;
             let event_repository = adapters::repository::PostgresEventRepository::new(pool);
 
-            let event_provider_client = adapters::provider::HttpEventProviderClient;
+            let event_provider_client = adapters::provider::HttpEventProviderClient::new(
+                config
+                    .event_provider
+                    .url
+                    .clone()
+                    .expect("Event provider URL config value is missing"),
+                config
+                    .event_provider
+                    .api_path
+                    .clone()
+                    .expect("Event provider API path config value is missing"),
+            );
 
             // Dependency Injection
             let shared_event_repository = Arc::new(event_repository);
@@ -37,9 +66,12 @@ pub fn serve_app() -> anyhow::Result<()> {
                 IngestEventService::new(shared_event_provider_client, shared_event_repository);
 
             // Controller
-            let app =
-                adapters::controller::init_controller(search_event_service, ingest_event_service)
-                    .await?;
+            let app = adapters::controller::init_controller(
+                search_event_service,
+                ingest_event_service,
+                &config,
+            )
+            .await?;
 
             // Tracing
             let subscriber = tracing_subscriber::registry()
@@ -50,6 +82,7 @@ pub fn serve_app() -> anyhow::Result<()> {
             // Server
             let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8080);
             let listener = TcpListener::bind(addr).await?;
+            println!("Server listening at {addr:?}");
 
             axum::serve(listener, app)
                 .with_graceful_shutdown(shutdown_signal())
