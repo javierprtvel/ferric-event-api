@@ -1,0 +1,64 @@
+ferric-event-api:
+  Features:
+    ✔ Basic /search endpoint test @done(25-11-12 19:18)
+    ✔ Dumb /search endpoint implementation that passes the test @done(25-11-12 19:18)
+    ✔ Return 400 with error response body when request params are wrong, missing, etc. @done(25-11-13 17:52)
+    ✔ Implement basic /search with in-memory storage of events @done(25-11-13 20:38)
+    ✔ Performance test tool for HTTP load testing @done(25-11-14 11:45)
+    ✔ Fetch events from third-party API and write them to storage through API "admin" endpoint @done(25-11-14 19:08)
+    ✔ Detach event ingestion process from /ingest handler so it returns 202 without waiting for the ingestion to finish @done(25-11-15 10:55)
+    ✔ Refactor the application state and dependencies model so immutable components are shared safely instead of being cloned @done(25-11-15 15:27)
+    ✔ Return 500 with error response body when a third-party API call fails, database is down, etc. (all handlers that apply) @done(25-11-15 15:43)
+    ✔ Review architecture and structure and refactor if needed (hexagonal) @done(25-11-18 18:30)
+    ✔ Graceful shutdown @done(25-11-19 18:30)
+    ✔ HTTP request/response tracing @done(25-11-19 18:45)
+    ✔ Refactor tracing initialization if possible (inside controller adapter?) @done(25-11-20 18:03)
+    ✔ Replace in-memory storage with a database @done(25-11-21 12:38)
+    ✔ Command/Script to seed database for e2e testing @done(25-11-21 15:01)
+    ✔ Move configuration values to config files and/or env variables: @done(25-11-21 17:16)
+        ✔ Check what happens when a value is missing @done(25-11-21 17:16)
+    ☐ Crash/Fatal error prevention: panic inside a dependency like EventRepository doesn't crash the application
+    ☐ Pagination
+    ☐ Replace print statements with proper logging
+    ☐ Improve benchmark tests to request random (start_time, end_time) ranges to /search API
+    ☐ Handle error cases
+    ☐ Add application as service in docker-compose for manual testing?
+    ☐ Review docker-compose definition: check for what is needed and the best practices for that
+    ☐ Try to add tests within Rust source code: e2e or integration, mocks, etc.
+    ☐ Mock server for Provider API manual and/or automated testing in local environment?
+    ☐ Split storage into "Provider Event" storage/model (infrastructure specific) and "Domain Event" storage/model (the one used in /search use case)
+    ☐ Improve third-party event fetcher by separating it to a subcommand or background job
+    ☐ Generate/Write OpenAPI documentation?
+    ☐ "Productionize"
+  Cross-cutting concerns:
+    ☐ Project structure (modules, folders, etc.)
+        ☐ Separate lib.rs declaring base modules?
+        ☐ Run linter/tool that checks/prints dependency graph of the application source code
+    ☐ Tracing
+    ✔ Dependency Injection and State/Context management @done(25-11-18 19:11)
+    ☐ API versioning
+    ☐ Dependency management: use minor version instead of "most recent"
+    ☐ Testing
+    ☐ Data validation
+    ☐ Error handling design and structure: check for unwraps and expects!!!
+    ☐ Review ownership, borrow checker and interior mutability in Rust
+    ☐ Review concurrency, parallelism and asynchronous programming in Rust
+    ☐ Concurrency/Parallelism of the webservice in real scenarios
+    ☐ Metrics/Monitoring
+    ☐ Security (authentication and authorization)
+    ☐ Conditional dependency injection based on environment (dev, test, staging, prod)?
+    ☐ Database schema migration
+  Linting:
+    ☐ Enforce import format and ordering?
+    ☐ Import style?
+    ☐ Opinionated code style?
+    ✔ Passing around immutable references to Event entities vs cloning around @done(25-11-18 19:11)
+    ☐ Which linter?
+  CI/CD:
+    ☐ Docker image?
+    ☐ format check + linter?
+    ☐ Run test suite?
+    ☐ Conditional compilation/Features for specific testing?
+    ☐ Do I distribute this as a single binary crate, or binary + lib crate?
+  Infra:
+    ☐ Where do I deploy this?

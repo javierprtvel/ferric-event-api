@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<planList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" xsi:noNamespaceSchemaLocation="planList.xsd">
+   <output>
+      <base_plan base_plan_id="606" sell_mode="online" title="El Clasico">
+         <plan plan_start_date="2025-04-24T21:00:00" plan_end_date="2025-04-24T23:45:00" plan_id="303" sell_from="2025-03-01T00:00:00" sell_to="2025-03-31T20:00:00" sold_out="false">
+            <zone zone_id="40" capacity="243" price="170.00" name="Platea" numbered="true" />
+            <zone zone_id="38" capacity="100" price="120.00" name="Grada 2" numbered="false" />
+            <zone zone_id="30" capacity="90" price="250.00" name="A28" numbered="true" />
+         </plan>
+      </base_plan>
+      <base_plan base_plan_id="707" sell_mode="online" title="Bruce Springsteen toma Madrid">
+         <plan plan_start_date="2025-08-31T18:00:00" plan_end_date="2025-08-31T22:30:00" plan_id="2300" sell_from="2025-03-01T00:00:00" sell_to="2025-03-31T20:00:00" sold_out="false">
+            <zone zone_id="50" capacity="243" price="89.00" name="Platea" numbered="true" />
+            <zone zone_id="27" capacity="100" price="99.00" name="Grada 2" numbered="false" />
+            <zone zone_id="61" capacity="90" price="199.99" name="A28" numbered="true" />
+         </plan>
+         <plan plan_start_date="2025-09-01T18:00:00" plan_end_date="2025-09-01T22:30:00" plan_id="1404" sell_from="2025-03-01T00:00:00" sell_to="2025-03-31T20:00:00" sold_out="false">
+            <zone zone_id="50" capacity="243" price="75.95" name="Platea" numbered="true" />
+            <zone zone_id="27" capacity="100" price="109.99" name="Grada 2" numbered="false" />
+            <zone zone_id="61" capacity="90" price="209.99" name="A28" numbered="true" />
+         </plan>
+      </base_plan>
+   </output>
+</planList>
