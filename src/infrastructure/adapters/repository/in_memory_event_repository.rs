@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -10,6 +9,7 @@ use crate::domain::event::Event;
 
 pub struct InMemoryEventRepository(Mutex<HashMap<Uuid, Event>>);
 
+#[allow(dead_code)]
 impl InMemoryEventRepository {
     pub fn new() -> Self {
         Self(Mutex::new(HashMap::new()))

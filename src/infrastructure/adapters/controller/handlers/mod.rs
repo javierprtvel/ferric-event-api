@@ -5,13 +5,14 @@ use axum::extract::State;
 use axum::extract::{Query, rejection::QueryRejection};
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 use crate::application::ports::provider::EventProviderClient;
 use crate::application::ports::repository::EventRepository;
 
-use super::state::ApplicationState;
 use super::api::{ApiResponse, ErrorResponse};
+use super::state::ApplicationState;
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
@@ -55,7 +56,7 @@ pub async fn handle_search<
 
     match params {
         Err(_err) => {
-            println!("Search query params are invalid");
+            debug!("Search query params are invalid");
             let error_response = ErrorResponse {
                 code: "11".to_string(),
                 message: "Missing required params".to_string(),
@@ -66,7 +67,7 @@ pub async fn handle_search<
             ))
         }
         Ok(query) => {
-            println!("Search query params are: {query:?}");
+            debug!("Search query params are: {query:?}");
 
             let events = search_event_service
                 .search_events(query.start_time, query.end_time)

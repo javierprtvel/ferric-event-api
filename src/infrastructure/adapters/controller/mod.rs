@@ -8,6 +8,7 @@ use std::time::Duration;
 use arc_swap::ArcSwap;
 use axum::Router;
 
+use reqwest::StatusCode;
 use state::ApplicationState;
 use tower_http::{timeout::TimeoutLayer, trace::TraceLayer};
 
@@ -27,12 +28,15 @@ where
 {
     let state = init_application_state(&config, search_event_service, ingest_event_service).await;
     let app = api::configure(Arc::new(state))
-        .layer(TimeoutLayer::new(Duration::from_secs(
-            config
-                .api
-                .request_timeout_secs
-                .expect("API request timeout config value is missing"),
-        )))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(
+                config
+                    .api
+                    .request_timeout_secs
+                    .expect("API request timeout config value is missing"),
+            ),
+        ))
         .layer(TraceLayer::new_for_http());
     Ok(app)
 }

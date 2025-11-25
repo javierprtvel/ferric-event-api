@@ -6,15 +6,17 @@ use std::{
     sync::Arc,
 };
 
+use log::{debug, info};
 use sqlx::postgres::PgPoolOptions;
 use tokio::{net::TcpListener, signal};
-use tracing::{Level, level_filters::LevelFilter};
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     application::service::{IngestEventService, SearchEventService},
     infrastructure::config::ApplicationConfig,
 };
+
+const DEFAULT_TRACING_ENV_FILTER: &'static str = "ferric_event_api=trace,tower_http=warn";
 
 pub fn load_config(env_prefix: &str) -> anyhow::Result<config::ApplicationConfig> {
     let app_config = config::ApplicationConfig::new(env_prefix)?;
@@ -73,16 +75,21 @@ pub fn serve_app(config: ApplicationConfig) -> anyhow::Result<()> {
             )
             .await?;
 
-            // Tracing
-            let subscriber = tracing_subscriber::registry()
-                .with(LevelFilter::from_level(Level::TRACE))
-                .with(fmt::Layer::default());
-            subscriber.init();
+            // Tracing and logging
+            tracing_subscriber::registry()
+                .with(fmt::Layer::default())
+                .with(
+                    EnvFilter::try_from_default_env()
+                        .or_else(|_| EnvFilter::try_new(DEFAULT_TRACING_ENV_FILTER))
+                        .unwrap(),
+                )
+                .init();
 
             // Server
-            let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8080);
+            let port = config.port.expect("Server port config value is missing");
+            let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
             let listener = TcpListener::bind(addr).await?;
-            println!("Server listening at {addr:?}");
+            info!("Server listening at {addr:?}");
 
             axum::serve(listener, app)
                 .with_graceful_shutdown(shutdown_signal())
@@ -111,7 +118,7 @@ async fn shutdown_signal() {
     let terminate = std::future::pending();
 
     tokio::select! {
-        _ = ctrl_c => {println!("SIGINT received")},
-        _ = terminate => {println!("SIGTERM received")},
+        _ = ctrl_c => {debug!("SIGINT received")},
+        _ = terminate => {debug!("SIGTERM received")},
     }
 }

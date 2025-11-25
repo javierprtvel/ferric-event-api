@@ -4,6 +4,7 @@ use crate::application::ports::{provider::EventProviderClient, repository::Event
 use crate::application::service::{IngestEventService, SearchEventService};
 use crate::infrastructure::config::ApplicationConfig;
 
+#[allow(dead_code)]
 pub struct ApplicationState<
     T: EventRepository + Send + Sync + 'static,
     S: EventProviderClient + Send + Sync + 'static,

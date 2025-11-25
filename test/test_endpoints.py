@@ -1,8 +1,9 @@
 import requests
 
+port=8080
 
 def test_root():
-    resp = requests.get("http://localhost:8080/")
+    resp = requests.get(f"http://localhost:{port}/")
     assert resp.status_code == 200
     assert resp.json() == "Hello, world!"
 
@@ -10,7 +11,7 @@ def test_root():
 def test_search_returns_events_within_time_range():
     params = {"start_time": "2025-11-01T08:00:00Z", "end_time": "2025-11-30T18:00:00Z"}
 
-    resp = requests.get("http://localhost:8080/search", params=params)
+    resp = requests.get(f"http://localhost:{port}/search", params=params)
 
     assert resp.status_code == 200
     expected_json = {
@@ -38,7 +39,7 @@ def test_search_returns_events_within_time_range():
 def test_search_returns_client_error_when_required_param_is_missing():
     params = {"start_time": "2025-11-12T08:00:00Z"}
 
-    resp = requests.get("http://localhost:8080/search", params=params)
+    resp = requests.get(f"http://localhost:{port}/search", params=params)
 
     assert resp.status_code == 400
     expected_json = {
@@ -53,7 +54,7 @@ def test_search_returns_client_error_when_required_param_is_missing():
 def test_search_returns_server_error_when_something_unexpected_happens():
     params = {"start_time": "2025-11-12T08:00:00Z", "end_time": "2025-11-12T18:00:00Z"}
 
-    resp = requests.get("http://localhost:8080/search", params=params)
+    resp = requests.get(f"http://localhost:{port}/search", params=params)
 
     assert resp.status_code == 500
     expected_json = {
@@ -66,7 +67,7 @@ def test_search_returns_server_error_when_something_unexpected_happens():
 
 
 def test_ingest_starts_event_data_ingestion():
-    resp = requests.patch("http://localhost:8080/ingest")
+    resp = requests.patch(f"http://localhost:{port}/ingest")
 
     print(f"Response status is {resp.status_code}")
     assert resp.status_code == 202

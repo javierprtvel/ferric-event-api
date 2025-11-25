@@ -2,14 +2,17 @@ use config::Environment;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize, Default)]
+#[allow(dead_code)]
 pub struct ApplicationConfig {
     pub config: ConfigInfo,
+    pub port: Option<u16>,
     pub database: Database,
     pub event_provider: EventProvider,
     pub api: Api,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]
+#[allow(dead_code)]
 pub struct ConfigInfo {
     pub env_prefix: Option<String>,
 }

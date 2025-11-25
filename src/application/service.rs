@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use log::{error, info};
 
 use super::ports::provider::{EventProviderClient, ProviderEvent};
 use super::ports::repository::{EventRepository, SaveEventRequest};
@@ -53,11 +54,11 @@ impl<T: EventProviderClient + Sync + Send + 'static, S: EventRepository + Sync +
 
         tokio::spawn(async move {
             // 1. Fetch event data from third-party event provider
-            println!("Fetching event data from provider...");
+            info!("Fetching event data from provider...");
             let provider_events = match event_provider_client.fetch_events().await {
                 Ok(pes) => pes,
                 Err(error) => {
-                    println!(
+                    error!(
                         "Error fetching event data from provider: {}.\nEvent data ingestion failed.",
                         error
                     );
@@ -66,7 +67,7 @@ impl<T: EventProviderClient + Sync + Send + 'static, S: EventRepository + Sync +
             };
 
             // 2. Insert or update events in repository depending on ingestion criteria
-            println!("Updating event store with provider data...");
+            info!("Updating event store with provider data...");
             for pe in provider_events {
                 if let Some(mut e) = event_repository.find_by_title(&pe.title).await {
                     // Upsert
@@ -80,7 +81,7 @@ impl<T: EventProviderClient + Sync + Send + 'static, S: EventRepository + Sync +
                     event_repository.save(pe.into()).await;
                 }
             }
-            println!("Event store update finished.");
+            info!("Event store update finished.");
         });
     }
 }

@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::application::ports::repository::{EventRepository, SaveEventRequest};
