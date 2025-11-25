@@ -12,7 +12,13 @@ impl EventRepository for DummyEventRepository {
     async fn find_all(&self) -> Vec<Event> {
         todo!("Not yet implemented")
     }
-    async fn find_between(&self, start_time: DateTime<Utc>, end_time: DateTime<Utc>) -> Vec<Event> {
+    async fn find_between(
+        &self,
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+        limit: u64,
+        offset: u64,
+    ) -> Vec<Event> {
         todo!("Not yet implemented")
     }
     async fn find_by_id(&self, id: &Uuid) -> Option<Event> {

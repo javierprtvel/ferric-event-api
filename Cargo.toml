@@ -18,7 +18,7 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-log = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 tower-http = { version = "*", features = ["trace", "timeout"] }
-sqlx = { version = "0.7", features = [
+sqlx = { version = "0.8.6", features = [
     "postgres",
     "runtime-tokio",
     "tls-rustls",

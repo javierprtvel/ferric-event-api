@@ -33,13 +33,14 @@ impl EventRepository for InMemoryEventRepository {
         event_store.values().find(|e| e.title == title).cloned()
     }
 
-    async fn find_between(&self, start_time: DateTime<Utc>, end_time: DateTime<Utc>) -> Vec<Event> {
-        let event_store = self.0.lock().await;
-        event_store
-            .values()
-            .filter(|e| start_time <= e.start_time && e.end_time <= end_time)
-            .cloned()
-            .collect()
+    async fn find_between(
+        &self,
+        _start_time: DateTime<Utc>,
+        _end_time: DateTime<Utc>,
+        _limit: u64,
+        _offset: u64,
+    ) -> Vec<Event> {
+        todo!("Implement pagination")
     }
 
     async fn save(&self, e: SaveEventRequest) -> Event {

@@ -31,16 +31,34 @@ impl EventRepository for PostgresEventRepository {
             .map(|pe| pe.clone().into())
             .collect()
     }
-    async fn find_between(&self, start_time: DateTime<Utc>, end_time: DateTime<Utc>) -> Vec<Event> {
+
+    async fn find_between(
+        &self,
+        start_time: DateTime<Utc>,
+        end_time: DateTime<Utc>,
+        limit: u64,
+        offset: u64,
+    ) -> Vec<Event> {
+        let signed_limit: i64 = limit
+            .try_into()
+            .expect("Failed to cast query limit from u64 to i64");
+        let signed_offset: i64 = offset
+            .try_into()
+            .expect("Failed to cast query offset from u64 to i64");
+
         let query = sqlx::query_as!(
             PostgresEvent,
             r#"
             SELECT id, title, start_time, end_time, min_price as min_price_in_lowest_denomination, max_price as max_price_in_lowest_denomination
             FROM events
             WHERE start_time >= $1 AND end_time <= $2
+            LIMIT $3
+            OFFSET $4
         "#,
             start_time,
-            end_time
+            end_time,
+            signed_limit,
+            signed_offset,
         );
 
         query
@@ -51,6 +69,7 @@ impl EventRepository for PostgresEventRepository {
             .map(|pe| pe.clone().into())
             .collect()
     }
+
     async fn find_by_id(&self, id: &Uuid) -> Option<Event> {
         let query = sqlx::query_as!(
             PostgresEvent,
@@ -68,6 +87,7 @@ impl EventRepository for PostgresEventRepository {
             .expect("Failed to find event by id in event database")
             .map(|pe| pe.into())
     }
+
     async fn find_by_title(&self, title: &str) -> Option<Event> {
         let query = sqlx::query_as!(
             PostgresEvent,
@@ -85,6 +105,7 @@ impl EventRepository for PostgresEventRepository {
             .expect("Failed to find event by title in event database")
             .map(|pe| pe.into())
     }
+
     async fn save(&self, e: SaveEventRequest) -> Event {
         let event = PostgresEvent::from(e);
         let query = sqlx::query!(
@@ -107,6 +128,7 @@ impl EventRepository for PostgresEventRepository {
 
         self.find_by_id(&event.id).await.unwrap()
     }
+
     async fn upsert(&self, entity: Event) -> Event {
         let event = PostgresEvent::from(entity);
         let query = sqlx::query!(

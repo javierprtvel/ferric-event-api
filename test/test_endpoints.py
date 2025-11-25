@@ -1,6 +1,7 @@
 import requests
 
-port=8080
+port = 8080
+
 
 def test_root():
     resp = requests.get(f"http://localhost:{port}/")
@@ -9,7 +10,11 @@ def test_root():
 
 
 def test_search_returns_events_within_time_range():
-    params = {"start_time": "2025-11-01T08:00:00Z", "end_time": "2025-11-30T18:00:00Z"}
+    params = {
+        "start_time": "2025-11-01T08:00:00Z",
+        "end_time": "2025-11-30T18:00:00Z",
+        "limit": 2,
+    }
 
     resp = requests.get(f"http://localhost:{port}/search", params=params)
 
@@ -29,6 +34,10 @@ def test_search_returns_events_within_time_range():
                 }
             ]
         },
+        "meta": {
+            "limit": 2,
+            "offset": 0,
+        },
         "error": None,
     }
 
@@ -44,6 +53,7 @@ def test_search_returns_client_error_when_required_param_is_missing():
     assert resp.status_code == 400
     expected_json = {
         "data": None,
+        "meta": None,
         "error": {"code": "11", "message": "Missing required params"},
     }
 
@@ -59,6 +69,7 @@ def test_search_returns_server_error_when_something_unexpected_happens():
     assert resp.status_code == 500
     expected_json = {
         "data": None,
+        "meta": None,
         "error": {"code": "string", "message": "string"},
     }
 

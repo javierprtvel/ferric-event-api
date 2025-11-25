@@ -23,8 +23,8 @@ where
         .with_state(state)
 }
 
-pub enum ApiResponse<T: Serialize> {
-    Ok(T),
+pub enum ApiResponse<T: Serialize, M: Serialize> {
+    Ok(T, M),
     Ko(ErrorResponse),
 }
 
@@ -34,7 +34,11 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
-impl<T: serde::ser::Serialize> Serialize for ApiResponse<T> {
+impl<T, M> Serialize for ApiResponse<T, M>
+where
+    T: serde::ser::Serialize,
+    M: serde::ser::Serialize,
+{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
@@ -42,12 +46,14 @@ impl<T: serde::ser::Serialize> Serialize for ApiResponse<T> {
         let mut state = serializer.serialize_struct("ApiResponse", 2)?;
 
         match self {
-            ApiResponse::Ok(data) => {
+            ApiResponse::Ok(data, meta) => {
                 state.serialize_field("data", data)?;
+                state.serialize_field("meta", meta)?;
                 state.serialize_field("error", &Option::<ErrorResponse>::None)?;
             }
             ApiResponse::Ko(error) => {
                 state.serialize_field("data", &Option::<T>::None)?;
+                state.serialize_field("meta", &Option::<M>::None)?;
                 state.serialize_field("error", error)?;
             }
         }

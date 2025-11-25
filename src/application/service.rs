@@ -21,9 +21,11 @@ impl<T: EventRepository> SearchEventService<T> {
         &self,
         start_time: DateTime<Utc>,
         end_time: DateTime<Utc>,
+        limit: u64,
+        offset: u64,
     ) -> Vec<Event> {
         self.event_repository
-            .find_between(start_time, end_time)
+            .find_between(start_time, end_time, limit, offset)
             .await
     }
 }

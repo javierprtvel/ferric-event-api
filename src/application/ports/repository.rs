@@ -13,6 +13,8 @@ pub trait EventRepository {
         &self,
         start_time: DateTime<Utc>,
         end_time: DateTime<Utc>,
+        limit: u64,
+        offset: u64,
     ) -> impl std::future::Future<Output = Vec<Event>> + Send;
     fn save(&self, e: SaveEventRequest) -> impl std::future::Future<Output = Event> + Send;
     fn upsert(&self, entity: Event) -> impl std::future::Future<Output = Event> + Send;
