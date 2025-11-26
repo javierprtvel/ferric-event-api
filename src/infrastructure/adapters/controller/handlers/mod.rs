@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::application::ports::provider::EventProviderClient;
 use crate::application::ports::repository::EventRepository;
+use crate::application::service::{SearchEventServiceError, SearchEventServiceResponse};
 
 use super::api::{ApiResponse, ErrorResponse};
 use super::state::ApplicationState;
@@ -33,50 +34,24 @@ pub async fn handle_search<
         ..
     } = *state;
 
-    match params {
-        Err(err) => {
-            debug!("Search query params are invalid: {}", err);
-            let error_response = ErrorResponse {
+    let query = params.map_err(|err| {
+        debug!("Search query params are invalid: {}", err);
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::Ko(ErrorResponse {
                 code: "11".to_string(),
                 message: "Missing required params".to_string(),
-            };
-            Err((
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::Ko(error_response)),
-            ))
-        }
-        Ok(query) => {
-            debug!("Search query params are: {query:?}");
+            })),
+        )
+    })?;
 
-            let events = search_event_service
-                .search_events(query.start_time, query.end_time, query.limit, query.offset)
-                .await;
+    debug!("Search query params are: {query:?}");
 
-            let response = SearchResponse {
-                events: events
-                    .iter()
-                    .map(|e| SearchEventResponse {
-                        id: e.id.into(),
-                        title: e.title.clone(),
-                        start_date: e.start_time.format("%Y-%m-%d").to_string(),
-                        start_time: e.start_time.format("%H:%M:%S").to_string(),
-                        end_date: e.end_time.format("%Y-%m-%d").to_string(),
-                        end_time: e.end_time.format("%H:%M:%S").to_string(),
-                        min_price: e.min_price,
-                        max_price: e.max_price,
-                    })
-                    .collect(),
-            };
+    let events = search_event_service
+        .search_events(query.start_time, query.end_time, query.limit, query.offset)
+        .await?;
 
-            Ok(Json(ApiResponse::Ok(
-                response,
-                SearchMetadata {
-                    limit: query.limit,
-                    offset: query.offset,
-                },
-            )))
-        }
-    }
+    Ok(events.into())
 }
 
 pub async fn handle_ingest<
@@ -136,4 +111,45 @@ pub struct SearchEventResponse {
 pub struct SearchMetadata {
     limit: u64,
     offset: u64,
+}
+
+impl Into<Json<ApiResponse<SearchResponse, SearchMetadata>>> for SearchEventServiceResponse {
+    fn into(self) -> Json<ApiResponse<SearchResponse, SearchMetadata>> {
+        let response = SearchResponse {
+            events: self
+                .events
+                .iter()
+                .map(|e| SearchEventResponse {
+                    id: e.id.into(),
+                    title: e.title.clone(),
+                    start_date: e.start_time.format("%Y-%m-%d").to_string(),
+                    start_time: e.start_time.format("%H:%M:%S").to_string(),
+                    end_date: e.end_time.format("%Y-%m-%d").to_string(),
+                    end_time: e.end_time.format("%H:%M:%S").to_string(),
+                    min_price: e.min_price,
+                    max_price: e.max_price,
+                })
+                .collect(),
+        };
+
+        Json(ApiResponse::Ok(
+            response,
+            SearchMetadata {
+                limit: self.limit,
+                offset: self.offset,
+            },
+        ))
+    }
+}
+
+impl From<SearchEventServiceError> for (StatusCode, Json<ApiResponse<(), ()>>) {
+    fn from(_value: SearchEventServiceError) -> Self {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::Ko(ErrorResponse {
+                code: "99".to_string(),
+                message: "Unexpected error when searching events.".to_string(),
+            })),
+        )
+    }
 }

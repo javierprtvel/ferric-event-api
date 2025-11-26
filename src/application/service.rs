@@ -23,10 +23,34 @@ impl<T: EventRepository> SearchEventService<T> {
         end_time: DateTime<Utc>,
         limit: u64,
         offset: u64,
-    ) -> Vec<Event> {
-        self.event_repository
+    ) -> Result<SearchEventServiceResponse, SearchEventServiceError> {
+        let events = self
+            .event_repository
             .find_between(start_time, end_time, limit, offset)
             .await
+            .inspect_err(|e| {
+                error!("Error searching events between {start_time:?} and {end_time:?}: {e:?}")
+            })?;
+
+        Ok(SearchEventServiceResponse {
+            events,
+            limit,
+            offset,
+        })
+    }
+}
+
+pub struct SearchEventServiceResponse {
+    pub events: Vec<Event>,
+    pub limit: u64,
+    pub offset: u64,
+}
+
+pub struct SearchEventServiceError;
+
+impl From<anyhow::Error> for SearchEventServiceError {
+    fn from(_value: anyhow::Error) -> Self {
+        Self
     }
 }
 
@@ -57,32 +81,57 @@ impl<T: EventProviderClient + Sync + Send + 'static, S: EventRepository + Sync +
         tokio::spawn(async move {
             // 1. Fetch event data from third-party event provider
             info!("Fetching event data from provider...");
-            let provider_events = match event_provider_client.fetch_events().await {
-                Ok(pes) => pes,
-                Err(error) => {
+            let provider_events = event_provider_client.fetch_events()
+                .await
+                .inspect_err(|error| {
                     error!(
                         "Error fetching event data from provider: {error:?}.\n\nEvent data ingestion failed.",
                     );
-                    return;
-                }
-            };
+            })?;
 
             // 2. Insert or update events in repository depending on ingestion criteria
-            info!("Updating event store with provider data...");
+            info!(
+                "Updating event store with provider data: {} entities to be processed",
+                provider_events.len()
+            );
             for pe in provider_events {
-                if let Some(mut e) = event_repository.find_by_title(&pe.title).await {
+                // Ingestion skips individual entities when unexpected error happens in the repository
+                let res = event_repository.find_by_title(&pe.title).await;
+                if res.is_err() {
+                    res.inspect_err(|error| {
+                        error!("Error finding event by title in the event store: {error:?}")
+                    })
+                    .ok();
+                    continue;
+                }
+
+                if let Some(mut e) = res.unwrap() {
                     // Upsert
                     e.start_time = pe.start_time;
                     e.end_time = pe.end_time;
                     e.min_price = pe.min_price;
                     e.max_price = pe.max_price;
-                    event_repository.upsert(e).await;
+                    event_repository
+                        .upsert(e)
+                        .await
+                        .inspect_err(|error| {
+                            error!("Error upserting event in event store: {error:?}")
+                        })
+                        .ok();
                 } else {
                     // Save
-                    event_repository.save(pe.into()).await;
+                    event_repository
+                        .save(pe.into())
+                        .await
+                        .inspect_err(|error| {
+                            error!("Error saving new event in event store: {error:?}")
+                        })
+                        .ok();
                 }
             }
             info!("Event store update finished.");
+
+            Ok::<(), anyhow::Error>(())
         });
     }
 }
