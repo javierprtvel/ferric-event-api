@@ -4,6 +4,7 @@ mod config;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
+    time::Duration,
 };
 
 use anyhow::Context;
@@ -61,9 +62,16 @@ pub fn serve_app(config: ApplicationConfig) -> anyhow::Result<()> {
             info!("Database connection pool established");
             let event_repository = adapters::repository::PostgresEventRepository::new(pool);
 
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(
+                    config.event_provider_client.request_timeout,
+                ))
+                .build()
+                .context("Failed to create HTTP client for event provider client")?;
             let event_provider_client = adapters::provider::HttpEventProviderClient::new(
-                config.event_provider.url.clone(),
-                config.event_provider.api_path.clone(),
+                config.event_provider_client.url.clone(),
+                config.event_provider_client.api_path.clone(),
+                client,
             );
             info!("Event Provider client initialized successfully");
 

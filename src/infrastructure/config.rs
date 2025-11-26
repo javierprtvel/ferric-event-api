@@ -7,7 +7,7 @@ pub struct ApplicationConfig {
     pub config: ConfigInfo,
     pub port: Option<u16>,
     pub database: Database,
-    pub event_provider: EventProvider,
+    pub event_provider_client: EventProviderClient,
     pub api: Api,
 }
 
@@ -24,9 +24,10 @@ pub struct Database {
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]
-pub struct EventProvider {
+pub struct EventProviderClient {
     pub url: String,
     pub api_path: String,
+    pub request_timeout: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]

@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
     init_tracing()
         .and_then(|_| load_config())
         .and_then(serve_app)
-        .inspect_err(|e| error!("Error while starting application: {e:#}\nA\n"))?;
+        .inspect_err(|e| error!("Error while starting application: {e:#}\n"))?;
 
     Ok(())
 }

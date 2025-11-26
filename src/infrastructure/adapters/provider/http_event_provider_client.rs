@@ -3,6 +3,7 @@ use std::str::FromStr;
 use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
 use log::warn;
+use reqwest::Client;
 use serde::Deserialize;
 
 use crate::application::ports::provider::{EventProviderClient, ProviderEvent};
@@ -10,32 +11,35 @@ use crate::application::ports::provider::{EventProviderClient, ProviderEvent};
 pub struct HttpEventProviderClient {
     provider_url: String,
     event_api_path: String,
+    client: reqwest::Client,
 }
 
 impl HttpEventProviderClient {
-    pub fn new(provider_url: String, event_api_path: String) -> Self {
+    pub fn new(provider_url: String, event_api_path: String, client: Client) -> Self {
         Self {
             provider_url,
             event_api_path,
+            client,
         }
     }
 }
 
-const ERROR_CONTEXT: &'static str = "Failed to fetch events from Event Provider API";
-
 impl EventProviderClient for HttpEventProviderClient {
     async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
         let url = format!("{}/{}", self.provider_url, self.event_api_path);
-        let response_body_text = reqwest::get(url)
+        let response_body_text = self
+            .client
+            .get(url)
+            .send()
             .await
-            .context(ERROR_CONTEXT)?
+            .context("Failed to fetch events from Event Provider API")?
             .text()
             .await
-            .context(ERROR_CONTEXT)?;
+            .context("Failed to fetch events from Event Provider API")?;
 
         serde_xml_rs::from_str(&response_body_text)
             .map(EventPlanList::into)
-            .context(ERROR_CONTEXT)
+            .context("Failed to fetch events from Event Provider API")
     }
 }
 
