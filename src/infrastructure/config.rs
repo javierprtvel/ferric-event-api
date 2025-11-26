@@ -14,36 +14,33 @@ pub struct ApplicationConfig {
 #[derive(Clone, Debug, Deserialize, Default)]
 #[allow(dead_code)]
 pub struct ConfigInfo {
-    pub env_prefix: Option<String>,
+    pub env_prefix: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct Database {
-    pub url: Option<String>,
-    pub max_connections: Option<u32>,
+    pub url: String,
+    pub max_connections: u32,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct EventProvider {
-    pub url: Option<String>,
-    pub api_path: Option<String>,
+    pub url: String,
+    pub api_path: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct Api {
-    pub request_timeout_secs: Option<u64>,
+    pub request_timeout_secs: u64,
 }
 
-const APP_CONFIG_PREFIX_SEPARATOR: &'static str = "__";
-const APP_CONFIG_SEPARATOR: &'static str = "__";
-
 impl ApplicationConfig {
-    pub fn new(env_prefix: &str) -> anyhow::Result<Self> {
+    pub fn new(env_prefix: &str, prefix_separator: &str, separator: &str) -> anyhow::Result<Self> {
         let c = config::Config::builder()
             .add_source(
                 Environment::with_prefix(env_prefix)
-                    .prefix_separator(APP_CONFIG_PREFIX_SEPARATOR)
-                    .separator(APP_CONFIG_SEPARATOR),
+                    .prefix_separator(prefix_separator)
+                    .separator(separator),
             )
             .set_override("config.env_prefix", env_prefix)?
             .build()?;

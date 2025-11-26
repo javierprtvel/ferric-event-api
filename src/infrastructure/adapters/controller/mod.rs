@@ -27,17 +27,14 @@ where
     S: EventProviderClient + Send + Sync + 'static,
 {
     let state = init_application_state(&config, search_event_service, ingest_event_service).await;
+
     let app = api::configure(Arc::new(state))
         .layer(TimeoutLayer::with_status_code(
             StatusCode::REQUEST_TIMEOUT,
-            Duration::from_secs(
-                config
-                    .api
-                    .request_timeout_secs
-                    .expect("API request timeout config value is missing"),
-            ),
+            Duration::from_secs(config.api.request_timeout_secs),
         ))
         .layer(TraceLayer::new_for_http());
+
     Ok(app)
 }
 

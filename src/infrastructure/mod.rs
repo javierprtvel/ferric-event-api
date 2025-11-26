@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Context;
 use log::{debug, info};
 use sqlx::postgres::PgPoolOptions;
 use tokio::{net::TcpListener, signal};
@@ -17,9 +18,32 @@ use crate::{
 };
 
 const DEFAULT_TRACING_ENV_FILTER: &'static str = "ferric_event_api=trace,tower_http=warn";
+const APP_ENV_PREFIX: &'static str = "APP";
+const APP_CONFIG_PREFIX_SEPARATOR: &'static str = "__";
+const APP_CONFIG_SEPARATOR: &'static str = "__";
+const DEFAULT_APP_PORT: u16 = 8080;
 
-pub fn load_config(env_prefix: &str) -> anyhow::Result<config::ApplicationConfig> {
-    let app_config = config::ApplicationConfig::new(env_prefix)?;
+pub fn init_tracing() -> anyhow::Result<()> {
+    tracing_subscriber::registry()
+        .with(fmt::Layer::default())
+        .with(
+            EnvFilter::try_from_default_env()
+                .or_else(|_| EnvFilter::try_new(DEFAULT_TRACING_ENV_FILTER))
+                .context("Failed to initialize tracing")?,
+        )
+        .init();
+
+    Ok(())
+}
+
+pub fn load_config() -> anyhow::Result<config::ApplicationConfig> {
+    let app_config = config::ApplicationConfig::new(
+        APP_ENV_PREFIX,
+        APP_CONFIG_PREFIX_SEPARATOR,
+        APP_CONFIG_SEPARATOR,
+    )
+    .context("Failed to load application config")?;
+
     Ok(app_config)
 }
 
@@ -30,35 +54,18 @@ pub fn serve_app(config: ApplicationConfig) -> anyhow::Result<()> {
         .build()?
         .block_on(async {
             let pool = PgPoolOptions::new()
-                .max_connections(
-                    config
-                        .database
-                        .max_connections
-                        .clone()
-                        .expect("Database maximum connections config value is missing"),
-                )
-                .connect(
-                    &config
-                        .database
-                        .url
-                        .clone()
-                        .expect("Database URL config value is missing"),
-                )
-                .await?;
+                .max_connections(config.database.max_connections.clone())
+                .connect(&config.database.url.clone())
+                .await
+                .context("Failed to create database connection pool")?;
+            info!("Database connection pool established");
             let event_repository = adapters::repository::PostgresEventRepository::new(pool);
 
             let event_provider_client = adapters::provider::HttpEventProviderClient::new(
-                config
-                    .event_provider
-                    .url
-                    .clone()
-                    .expect("Event provider URL config value is missing"),
-                config
-                    .event_provider
-                    .api_path
-                    .clone()
-                    .expect("Event provider API path config value is missing"),
+                config.event_provider.url.clone(),
+                config.event_provider.api_path.clone(),
             );
+            info!("Event Provider client initialized successfully");
 
             // Dependency Injection
             let shared_event_repository = Arc::new(event_repository);
@@ -73,20 +80,11 @@ pub fn serve_app(config: ApplicationConfig) -> anyhow::Result<()> {
                 ingest_event_service,
                 &config,
             )
-            .await?;
-
-            // Tracing and logging
-            tracing_subscriber::registry()
-                .with(fmt::Layer::default())
-                .with(
-                    EnvFilter::try_from_default_env()
-                        .or_else(|_| EnvFilter::try_new(DEFAULT_TRACING_ENV_FILTER))
-                        .unwrap(),
-                )
-                .init();
+            .await
+            .context("Failed to initialize controller")?;
 
             // Server
-            let port = config.port.expect("Server port config value is missing");
+            let port = config.port.unwrap_or(DEFAULT_APP_PORT);
             let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port);
             let listener = TcpListener::bind(addr).await?;
             info!("Server listening at {addr:?}");
@@ -105,12 +103,12 @@ async fn shutdown_signal() {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
-            .expect("failed to install Ctrl-C handler");
+            .expect("Failed to install Ctrl-C handler");
     };
     #[cfg(unix)]
     let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install SIGTERM handler")
+            .expect("Failed to install SIGTERM handler")
             .recv()
             .await;
     };
@@ -118,7 +116,7 @@ async fn shutdown_signal() {
     let terminate = std::future::pending();
 
     tokio::select! {
-        _ = ctrl_c => {debug!("SIGINT received")},
-        _ = terminate => {debug!("SIGTERM received")},
+        _ = ctrl_c => { debug!("SIGINT received") },
+        _ = terminate => { debug!("SIGTERM received") },
     }
 }

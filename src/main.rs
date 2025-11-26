@@ -3,14 +3,19 @@ mod domain;
 mod infrastructure;
 
 use dotenv::dotenv;
+use log::error;
+
+use infrastructure::init_tracing;
 use infrastructure::load_config;
 use infrastructure::serve_app;
 
-const APP_ENV_PREFIX: &'static str = "APP";
-
 fn main() -> anyhow::Result<()> {
-    dotenv()?;
-    let app_config = load_config(APP_ENV_PREFIX)?;
-    serve_app(app_config)?;
+    dotenv().ok();
+
+    init_tracing()
+        .and_then(|_| load_config())
+        .and_then(serve_app)
+        .inspect_err(|e| error!("Error while starting application: {e:#}\nA\n"))?;
+
     Ok(())
 }

@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
+use log::warn;
 use serde::Deserialize;
 
 use crate::application::ports::provider::{EventProviderClient, ProviderEvent};
@@ -20,16 +21,21 @@ impl HttpEventProviderClient {
     }
 }
 
+const ERROR_CONTEXT: &'static str = "Failed to fetch events from Event Provider API";
+
 impl EventProviderClient for HttpEventProviderClient {
     async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
         let url = format!("{}/{}", self.provider_url, self.event_api_path);
-        let response_body_text = reqwest::get(url).await?.text().await?;
+        let response_body_text = reqwest::get(url)
+            .await
+            .context(ERROR_CONTEXT)?
+            .text()
+            .await
+            .context(ERROR_CONTEXT)?;
 
-        let plan_list: EventPlanList = serde_xml_rs::from_str(&response_body_text)?;
-
-        let events: Vec<ProviderEvent> = plan_list.into();
-
-        Ok(events)
+        serde_xml_rs::from_str(&response_body_text)
+            .map(EventPlanList::into)
+            .context(ERROR_CONTEXT)
     }
 }
 
@@ -87,9 +93,13 @@ impl Into<Vec<ProviderEvent>> for EventPlanList {
             .base_plans
             .iter()
             .flat_map(|bp| {
-                bp.plans
-                    .iter()
-                    .filter_map(|p| ProviderEvent::from(p, &bp.title).ok())
+                bp.plans.iter().filter_map(|p| {
+                    ProviderEvent::from(p, &bp.title)
+                        .inspect_err(|e| {
+                            warn!("Failed to map event from Provider API to domain: {e:#}")
+                        })
+                        .ok()
+                })
             })
             .collect()
     }
@@ -100,21 +110,31 @@ impl ProviderEvent {
         let min_price = p
             .zones
             .iter()
-            .map(|z| z.price.parse::<f64>().unwrap())
+            .filter_map(|z| z.price.parse::<f64>().ok())
             .fold(f64::INFINITY, |a, b| a.min(b));
         let max_price = p
             .zones
             .iter()
-            .map(|z| z.price.parse::<f64>().unwrap())
+            .filter_map(|z| z.price.parse::<f64>().ok())
             .fold(f64::NEG_INFINITY, |a, b| a.max(b));
 
-        Ok(ProviderEvent {
-            title: String::from(title),
-            start_time: NaiveDateTime::from_str(&p.plan_start_date)?.and_utc(),
-            end_time: NaiveDateTime::from_str(&p.plan_end_date)?.and_utc(),
-            min_price,
-            max_price,
-        })
+        if min_price < f64::INFINITY || max_price > f64::NEG_INFINITY {
+            Ok(ProviderEvent {
+                title: String::from(title),
+                start_time: NaiveDateTime::from_str(&p.plan_start_date)
+                    .context(format!("Error parsing datetime {}", p.plan_start_date))?
+                    .and_utc(),
+                end_time: NaiveDateTime::from_str(&p.plan_end_date)
+                    .context(format!("Error parsing datetime {}", p.plan_end_date))?
+                    .and_utc(),
+                min_price,
+                max_price,
+            })
+        } else {
+            Err(anyhow::Error::msg(
+                "Error parsing zone prices: all prices are invalid",
+            ))
+        }
     }
 }
 
@@ -131,14 +151,5 @@ mod tests {
         let events: Vec<ProviderEvent> = plan_list.into();
 
         assert_eq!(events.len(), 4);
-    }
-}
-
-#[allow(dead_code)]
-pub struct DummyEventProviderClient;
-
-impl EventProviderClient for DummyEventProviderClient {
-    async fn fetch_events(&self) -> Result<Vec<ProviderEvent>> {
-        Ok(Vec::new())
     }
 }

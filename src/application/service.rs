@@ -61,8 +61,7 @@ impl<T: EventProviderClient + Sync + Send + 'static, S: EventRepository + Sync +
                 Ok(pes) => pes,
                 Err(error) => {
                     error!(
-                        "Error fetching event data from provider: {}.\nEvent data ingestion failed.",
-                        error
+                        "Error fetching event data from provider: {error:?}.\n\nEvent data ingestion failed.",
                     );
                     return;
                 }
