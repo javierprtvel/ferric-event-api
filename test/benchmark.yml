@@ -1,11 +1,14 @@
 ---
 
-concurrency: 3
+concurrency: 4
 base: 'http://localhost:8080'
-iterations: 1000
+iterations: 10
 # rampup: 2
 
 plan:
   - name: Search events within a time range
     request:
-      url: /search?start_time=2025-11-01T08:00:00Z&end_time=2025-11-30T18:00:00Z
+      url: /search?start_time={{ item.start_time }}&end_time={{ item.end_time }}&limit={{ item.limit }}&offset={{ item.offset }}
+    with_items_from_csv:
+      file_name: ./fixtures/search_query_params.csv
+    shuffle: true

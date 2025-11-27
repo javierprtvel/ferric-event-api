@@ -12,3 +12,5 @@ target/
 *.pdb
 
 .env
+
+benchmark_results.txt

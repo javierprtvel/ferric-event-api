@@ -26,12 +26,12 @@ const DEFAULT_APP_PORT: u16 = 8080;
 
 pub fn init_tracing() -> anyhow::Result<()> {
     tracing_subscriber::registry()
-        .with(fmt::Layer::default())
         .with(
             EnvFilter::try_from_default_env()
                 .or_else(|_| EnvFilter::try_new(DEFAULT_TRACING_ENV_FILTER))
                 .context("Failed to initialize tracing")?,
         )
+        .with(fmt::Layer::default())
         .init();
 
     Ok(())
