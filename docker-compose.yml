@@ -1,4 +1,15 @@
 services:
+  server:
+    build:
+      context: .
+      target: final
+    env_file: .env.compose
+    ports:
+      - "8080:8080"
+    depends_on:
+      event-db:
+        condition: service_healthy
+
   event-db:
     image: postgres:18
     restart: always
@@ -9,11 +20,18 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: eventdb
     volumes:
+      - db-data:/var/lib/postgresql
       - database:/docker-entrypoint-initdb.d/
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     
 volumes:
+  db-data:
   database:
     driver: local
     driver_opts:

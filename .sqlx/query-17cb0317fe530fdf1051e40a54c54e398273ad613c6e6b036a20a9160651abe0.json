@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO events (id, title, start_time, end_time, min_price, max_price)\n                VALUES ($1, $2, $3, $4, $5, $6)\n                ON CONFLICT (id) DO UPDATE\n                SET title = $2, start_time = $3, end_time = $4, min_price = $5, max_price = $6\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17cb0317fe530fdf1051e40a54c54e398273ad613c6e6b036a20a9160651abe0"
+}
