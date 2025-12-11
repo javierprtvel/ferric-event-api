@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -8,10 +6,10 @@ use crate::application::ports::repository::{EventRepository, SaveEventRequest};
 use crate::domain::event::Event;
 
 #[allow(dead_code)]
-pub struct DummyEventRepository(pub HashMap<Uuid, Event>);
+pub struct FailingEventRepository;
 
 #[allow(unused_variables)]
-impl EventRepository for DummyEventRepository {
+impl EventRepository for FailingEventRepository {
     async fn find_all(&self) -> Result<Vec<Event>> {
         todo!("Not yet implemented")
     }
@@ -22,15 +20,7 @@ impl EventRepository for DummyEventRepository {
         limit: u64,
         offset: u64,
     ) -> Result<Vec<Event>> {
-        let events: Vec<Event> = self
-            .0
-            .values()
-            .filter(|e| e.start_time >= start_time && e.end_time <= end_time)
-            .skip(offset.try_into()?)
-            .take(limit.try_into()?)
-            .cloned()
-            .collect();
-        Ok(events)
+        anyhow::bail!("Failed to find events between datetimes in event database")
     }
     async fn find_by_id(&self, id: &Uuid) -> Result<Option<Event>> {
         todo!("Not yet implemented")

@@ -29,3 +29,7 @@ log = "0.4"
 tracing = { version = "0.1", features = ["log"] }
 tracing-log = { version = "0.2" }
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+
+[dev-dependencies]
+tower = "0.5"
+http-body-util = "0.1"
