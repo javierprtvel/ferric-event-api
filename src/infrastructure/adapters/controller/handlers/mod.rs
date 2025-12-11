@@ -15,8 +15,13 @@ use crate::application::ports::provider::EventProviderClient;
 use crate::application::ports::repository::EventRepository;
 use crate::application::service::{SearchEventServiceError, SearchEventServiceResponse};
 
-pub async fn handle_root() -> Json<String> {
-    Json("Hello, world!".to_string())
+pub async fn handle_root() -> Json<ApiResponse<HelloWorldResponse, ()>> {
+    Json(ApiResponse::Ok(
+        HelloWorldResponse {
+            greetings: "Hello, world!".to_string(),
+        },
+        (),
+    ))
 }
 
 pub async fn handle_search<
@@ -75,6 +80,11 @@ pub async fn handle_ingest<
             })),
         )),
     }
+}
+
+#[derive(Serialize)]
+pub struct HelloWorldResponse {
+    greetings: String,
 }
 
 #[derive(Deserialize, Debug)]

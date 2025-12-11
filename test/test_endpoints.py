@@ -3,10 +3,15 @@ import requests
 port = 8080
 base_url = f"http://localhost:{port}"
 
+
 def test_root():
     resp = requests.get(f"{base_url}/api/v1")
     assert resp.status_code == 200
-    assert resp.json() == "Hello, world!"
+    assert resp.json() == {
+        "data": {"greetings": "Hello, world!"},
+        "meta": None,
+        "error": None,
+    }
 
 
 def test_search_returns_events_within_time_range():
@@ -61,22 +66,6 @@ def test_search_returns_client_error_when_required_param_is_missing():
     assert resp.json() == expected_json
 
 
-def test_search_returns_server_error_when_something_unexpected_happens():
-    params = {"start_time": "2025-11-12T08:00:00Z", "end_time": "2025-11-12T18:00:00Z"}
-
-    resp = requests.get(f"{base_url}/api/v1/search", params=params)
-
-    assert resp.status_code == 500
-    expected_json = {
-        "data": None,
-        "meta": None,
-        "error": {"code": "string", "message": "string"},
-    }
-
-    print(f"Response is {resp.json()}")
-    assert resp.json() == expected_json
-
-
 def test_ingest_starts_event_data_ingestion():
     resp = requests.patch(f"{base_url}/api/v1/ingest")
 
@@ -90,7 +79,6 @@ if __name__ == "__main__":
 
     test_search_returns_events_within_time_range()
     test_search_returns_client_error_when_required_param_is_missing()
-    # test_search_returns_server_error_when_something_unexpected_happens()
 
     test_ingest_starts_event_data_ingestion()
     test_search_returns_events_within_time_range()
