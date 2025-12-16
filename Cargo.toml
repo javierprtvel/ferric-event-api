@@ -33,3 +33,4 @@ tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 [dev-dependencies]
 tower = "0.5"
 http-body-util = "0.1"
+httpmock = "0.8.2"
