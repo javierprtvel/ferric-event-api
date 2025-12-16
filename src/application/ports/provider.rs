@@ -8,7 +8,7 @@ pub trait EventProviderClient {
     fn fetch_events(&self) -> impl std::future::Future<Output = Result<Vec<ProviderEvent>>> + Send;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ProviderEvent {
     pub title: String,
     pub start_time: DateTime<Utc>,
