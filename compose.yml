@@ -15,7 +15,6 @@ services:
   event-db:
     image: postgres:18
     restart: always
-    # shared memory limit when using docker compose
     shm_size: 128mb
     environment:
       POSTGRES_USER: user
@@ -23,7 +22,7 @@ services:
       POSTGRES_DB: eventdb
     volumes:
       - db-data:/var/lib/postgresql
-      - database:/docker-entrypoint-initdb.d/
+      - ./database/init/:/docker-entrypoint-initdb.d/:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -34,9 +33,3 @@ services:
     
 volumes:
   db-data:
-  database:
-    driver: local
-    driver_opts:
-      type: 'none'
-      o: 'bind'
-      device: 'database/init'
